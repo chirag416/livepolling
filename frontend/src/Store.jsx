@@ -37,3 +37,14 @@ export function useTabId() {
   }
   return ref.current;
 }
+
+export function useRoomCode() {
+  const [code, setCode] = useState(() => {
+    try { return sessionStorage.getItem('roomCode') || ''; } catch { return ''; }
+  });
+  // Allow other components to refresh manually if needed
+  const refresh = () => {
+    try { setCode(sessionStorage.getItem('roomCode') || ''); } catch {}
+  };
+  return { roomCode: code, refresh };
+}

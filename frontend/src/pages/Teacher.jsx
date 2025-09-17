@@ -1,17 +1,31 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { pollSocket } from '../socket';
-import { usePoll } from '../Store';
+import { usePoll, useRoomCode } from '../Store';
 import Countdown from '../components/Countdown';
 import PollResults from '../components/PollResults';
-import ChatWidget from '../components/ChatWidget';
+import ChatWidget from '../components/chatWidget';
 
 
 export default function Teacher() {
   const { state } = usePoll();
-  const [title, setTitle] = useState('My Class Poll');
+  const [title, setTitle] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const saveTimeout = useRef(null);
   const [question, setQ] = useState('');
   const [opts, setOpts] = useState(['', '', '', '']);
   const [timeLimit, setTL] = useState(60);
+  const { roomCode } = useRoomCode();
+  const [showCopyNotification, setShowCopyNotification] = useState(false);
+
+  const copyRoom = () => {
+    if (!roomCode) return;
+    navigator.clipboard?.writeText(roomCode)
+      .then(() => {
+        setShowCopyNotification(true);
+        setTimeout(() => setShowCopyNotification(false), 1500);
+      })
+      .catch(()=>{});
+  };
 
   const canAsk = useMemo(() => {
     if (!state) return false;
@@ -24,9 +38,32 @@ export default function Teacher() {
     if (!question.trim() || options.length < 2) return alert('Provide a question and at least 2 options.');
     pollSocket.emit('teacher:ask', { question: question.trim(), options, timeLimit });
     setQ('');
+    setOpts(['', '', '', '']);
   };
 
-  const createPoll = () => pollSocket.emit('teacher:createPoll', { title });
+  const createPoll = () => pollSocket.emit('teacher:createPoll', { title: title.trim() });
+
+  // Initialize / sync title from state.title when arrives (unless local editing in progress)
+  useEffect(() => {
+    if (state?.title && !dirty) {
+      setTitle(state.title);
+    }
+  }, [state?.title, dirty]);
+
+  const requestSave = () => {
+    const t = title.trim();
+    if (!t) return; // don't save empty
+    pollSocket.emit('teacher:updateTitle', { title: t });
+    setDirty(false);
+  };
+
+  // Debounced auto-save after typing stops (1.2s)
+  useEffect(() => {
+    if (!dirty) return;
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => requestSave(), 1200);
+    return () => saveTimeout.current && clearTimeout(saveTimeout.current);
+  }, [title, dirty]);
 
   const showNow = () => pollSocket.emit('teacher:show');
 
@@ -36,12 +73,25 @@ export default function Teacher() {
 
   return (
     <div className="container">
-      <div className="header">
-        <h2>{state.title}</h2>
-        <div className="row">
-          <input className="input" value={title} onChange={e=>setTitle(e.target.value)} placeholder="Poll title"/>
-          <button className="btn ghost" onClick={createPoll}>Create / Reset</button>
+      <div className="header" style={{flexWrap:'wrap', gap:16}}>
+        <h2 style={{margin:0}}>{state.title}</h2>
+        {state.current && state.current.status==='showing' && (
+          <div className="highlight" style={{background:'var(--primary-2)',color:'#fff',padding:'8px 16px',borderRadius:'12px',marginBottom:'8px',fontWeight:600}}>
+            You may ask a new question now.
+          </div>
+        )}
+        <div className="row" style={{flexWrap:'wrap', gap:8}}>
+          <input className="input" value={title} onChange={e=>{setTitle(e.target.value); setDirty(true);}} placeholder="Poll title (e.g. Algebra Quiz)"/>
+          <button className="btn ghost" onClick={createPoll} title="Start a new poll and clear previous questions/results">Start New Poll</button>
+          {dirty && <span style={{fontSize:12,color:'var(--muted)'}}>Saving…</span>}
+          {!dirty && state.title && <span style={{fontSize:12,color:'var(--muted)'}}>Saved</span>}
         </div>
+        {roomCode && (
+          <div className="row" style={{gap:6}}>
+            <span className="badge" style={{background:'var(--primary-2)'}}>Room: {roomCode}</span>
+            <button className="btn" style={{padding:'6px 10px'}} onClick={copyRoom} title="Copy room code">Copy</button>
+          </div>
+        )}
       </div>
 
       <div className="row" style={{alignItems:'flex-start'}}>
@@ -79,7 +129,7 @@ export default function Teacher() {
               <>
                 <h4>{state.current.question}</h4>
                 <PollResults results={state.current.results} />
-                <small style={{color:'var(--muted)'}}>You may ask a new question now.</small>
+                
               </>
             )}
           </div>
@@ -111,6 +161,9 @@ export default function Teacher() {
       </div>
 
       <ChatWidget />
+      {showCopyNotification && (
+        <div className="copy-notification">Code Copied!</div>
+      )}
     </div>
   );
 }

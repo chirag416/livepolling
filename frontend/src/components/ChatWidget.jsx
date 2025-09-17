@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { pollSocket } from '../socket';
+import { useTabId } from '../Store';
 
 export default function ChatWidget({ compact=false }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
   const listRef = useRef(null);
+  const tabId = useTabId();
 
   useEffect(() => {
     const onNew = (m) => setMsgs((x) => [...x, m]);
@@ -36,11 +38,27 @@ export default function ChatWidget({ compact=false }) {
         <div className="chat">
           <header>Chat</header>
           <div className="messages" ref={listRef}>
-            {msgs.map(m => (
-              <div key={m.id} className="msg">
-                <b className={m.by==='teacher'?'me':''}>{m.name}:</b> {m.text}
-              </div>
-            ))}
+            {msgs.map(m => {
+              const isMe = m.tabId === tabId;
+              return (
+                <div key={m.id} style={{
+                  display: 'flex', 
+                  justifyContent: isMe ? 'flex-end' : 'flex-start',
+                  marginBottom: '10px',
+                  width: '100%'
+                }}>
+                  <div style={{
+                    background: isMe ? '#FFF' : '#BBDBFF',
+                    padding: '8px 12px',
+                    borderRadius: '12px',
+                    maxWidth: '75%',
+                    border: isMe ? '1px solid #eee' : 'none'
+                  }}>
+                    <b style={{color: isMe ? '#000' : '#000'}}>{m.name}:</b> {m.text}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <form onSubmit={send} style={{display:'flex',gap:8,padding:10}}>
             <input className="input" value={text} onChange={e=>setText(e.target.value)} placeholder="Type a message..." />

@@ -41,9 +41,20 @@ export default function registerPollNamespace(nsp) {
     socket.on('teacher:createPoll', ({ title }) => {
       const room = getRoomFromSocket(socket, nsp, rooms);
       if (!room || !isTeacher(socket, room)) return;
-      room.title = title || 'Untitled Poll';
+      const t = (title || '').trim();
+      room.title = t || 'Untitled Poll';
       room.history = [];
       room.current = null;
+      emitState(room.code);
+    });
+
+    // Teacher updates poll title without resetting
+    socket.on('teacher:updateTitle', ({ title }) => {
+      const room = getRoomFromSocket(socket, nsp, rooms);
+      if (!room || !isTeacher(socket, room)) return;
+      const t = (title || '').trim();
+      if (!t) return; // ignore empty updates
+      room.title = t;
       emitState(room.code);
     });
 
