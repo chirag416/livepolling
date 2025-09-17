@@ -3,7 +3,7 @@ import { pollSocket } from '../socket';
 import { usePoll, useRoomCode } from '../Store';
 import Countdown from '../components/Countdown';
 import PollResults from '../components/PollResults';
-import ChatWidget from '../components/chatWidget';
+import ChatWidget from '../components/ChatWidgets';
 
 
 export default function Teacher() {
