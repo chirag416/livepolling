@@ -9,11 +9,21 @@ export function PollProvider({ children }) {
 
   useEffect(() => {
     const onState = (s) => setState(s);
-    const onJoined = () => setJoined(true);
+    
+    const onJoined = (data) => {
+      setJoined(true);
+      // If we receive state with the joined event, use it
+      if (data && data.state) {
+        setState(data.state);
+      }
+    };
+    
     const onKick = () => alert('You were removed by teacher.');
+    
     pollSocket.on('state', onState);
     pollSocket.on('joined', onJoined);
     pollSocket.on('kicked', onKick);
+    
     return () => {
       pollSocket.off('state', onState);
       pollSocket.off('joined', onJoined);

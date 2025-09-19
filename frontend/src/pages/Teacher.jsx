@@ -48,6 +48,11 @@ export default function Teacher() {
     if (state?.title && !dirty) {
       setTitle(state.title);
     }
+    
+    // Ensure we initialize the poll if we're the first teacher
+    if (state && !state.title) {
+      pollSocket.emit('teacher:createPoll', { title: 'Untitled Poll' });
+    }
   }, [state?.title, dirty]);
 
   const requestSave = () => {

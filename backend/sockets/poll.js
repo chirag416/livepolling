@@ -22,6 +22,10 @@ export default function registerPollNamespace(nsp) {
 
       if (role === 'teacher') {
         room.teacherIds.add(socket.id);
+        // Ensure the room has a title even if it's the first connection
+        if (!room.title || room.title === 'Untitled Poll') {
+          room.title = 'Untitled Poll';
+        }
         emitState(roomCode);
       } else {
         const studentId = socket.id;
@@ -34,7 +38,14 @@ export default function registerPollNamespace(nsp) {
         emitState(roomCode);
       }
 
-      socket.emit('joined', { ok: true, roomCode, state: publicState(rooms[roomCode]) });
+      // Always send complete state with the joined event
+      const roomState = publicState(rooms[roomCode]);
+      socket.emit('joined', { 
+        ok: true, 
+        roomCode, 
+        state: roomState,
+        role: role 
+      });
     });
 
     // Teacher creates new poll (resets history)

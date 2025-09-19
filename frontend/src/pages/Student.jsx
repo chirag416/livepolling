@@ -30,7 +30,16 @@ export default function Student() {
     }
   }, [state?.current?.id, state?.current?.status]);
 
-  if (!state) return null;
+  // Show a loading state instead of returning null
+  if (!state) return (
+    <div className="container">
+      <div className="card" style={{textAlign:'center', padding:'48px'}}>
+        <div style={{fontSize:32}}>⏳</div>
+        <h3>Connecting to the classroom...</h3>
+        <p>Please wait while we establish a connection.</p>
+      </div>
+    </div>
+  );
 
   return (
     <div className="container">
